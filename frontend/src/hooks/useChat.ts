@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Message } from '@/types'
+import type { Message } from '@/types'
 import { api } from '@/lib/api'
 
 export function useChat(threadId: string | null) {

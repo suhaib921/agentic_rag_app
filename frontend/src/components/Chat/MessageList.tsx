@@ -1,4 +1,4 @@
-import { Message } from '@/types'
+import type { Message } from '@/types'
 import { MessageItem } from './MessageItem'
 import { ScrollArea } from '@/components/ui/scroll-area'
 

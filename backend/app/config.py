@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     openai_api_key: str
     openai_assistant_id: str
+    openai_vector_store_id: str
     langsmith_api_key: str
     langsmith_project: str = "agentic-rag-module1"
     cors_origins: str = "http://localhost:5173"
