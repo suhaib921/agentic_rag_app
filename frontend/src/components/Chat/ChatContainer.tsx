@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Thread } from '@/types'
+import type { Thread } from '@/types'
 import { api } from '@/lib/api'
 import { MessageList } from './MessageList'
 import { ChatInput } from './ChatInput'

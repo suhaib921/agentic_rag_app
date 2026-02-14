@@ -1,4 +1,4 @@
-import { Message } from '@/types'
+import type { Message } from '@/types'
 import { Avatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 

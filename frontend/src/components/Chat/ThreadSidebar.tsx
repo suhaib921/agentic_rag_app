@@ -1,4 +1,4 @@
-import { Thread } from '@/types'
+import type { Thread } from '@/types'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
