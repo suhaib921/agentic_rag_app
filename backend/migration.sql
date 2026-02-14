@@ -47,7 +47,9 @@ CREATE POLICY "Users can insert their own threads"
 
 DROP POLICY IF EXISTS "Users can update their own threads" ON threads;
 CREATE POLICY "Users can update their own threads"
-  ON threads FOR UPDATE USING (auth.uid() = user_id);
+  ON threads FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own threads" ON threads;
 CREATE POLICY "Users can delete their own threads"
@@ -60,11 +62,22 @@ CREATE POLICY "Users can view their own messages"
 
 DROP POLICY IF EXISTS "Users can insert their own messages" ON messages;
 CREATE POLICY "Users can insert their own messages"
-  ON messages FOR INSERT WITH CHECK (auth.uid() = user_id);
+  ON messages FOR INSERT WITH CHECK (
+    auth.uid() = user_id AND
+    EXISTS (SELECT 1 FROM threads WHERE threads.id = thread_id AND threads.user_id = auth.uid())
+  );
 
 DROP POLICY IF EXISTS "Users can update their own messages" ON messages;
 CREATE POLICY "Users can update their own messages"
-  ON messages FOR UPDATE USING (auth.uid() = user_id);
+  ON messages FOR UPDATE
+  USING (
+    auth.uid() = user_id AND
+    EXISTS (SELECT 1 FROM threads WHERE threads.id = thread_id AND threads.user_id = auth.uid())
+  )
+  WITH CHECK (
+    auth.uid() = user_id AND
+    EXISTS (SELECT 1 FROM threads WHERE threads.id = thread_id AND threads.user_id = auth.uid())
+  );
 
 DROP POLICY IF EXISTS "Users can delete their own messages" ON messages;
 CREATE POLICY "Users can delete their own messages"
