@@ -1,6 +1,7 @@
 import sys
 import os
-sys.path.insert(0, '/home/suhkth/Desktop/Rag/agentic_rag_app/backend')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # Set environment variables before importing
 os.environ['LANGSMITH_TRACING'] = 'true'
@@ -13,7 +14,6 @@ from app.config import settings
 client = Client(api_key=settings.langsmith_api_key)
 
 print(f"Testing LangSmith connection...")
-print(f"API Key: {settings.langsmith_api_key[:15]}...")
 print(f"Project: {settings.langsmith_project}")
 
 @traceable(

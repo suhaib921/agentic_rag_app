@@ -1,6 +1,7 @@
 import asyncio
 import sys
-sys.path.insert(0, '/home/suhkth/Desktop/Rag/agentic_rag_app/backend')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.services.openai_service import create_thread
 

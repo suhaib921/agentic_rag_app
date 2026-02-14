@@ -62,7 +62,9 @@ EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Users can update their own threads" ON threads;
     CREATE POLICY "Users can update their own threads"
-      ON threads FOR UPDATE USING (auth.uid() = user_id);
+      ON threads FOR UPDATE
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
 EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 DO $$ BEGIN
@@ -81,13 +83,24 @@ EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Users can insert their own messages" ON messages;
     CREATE POLICY "Users can insert their own messages"
-      ON messages FOR INSERT WITH CHECK (auth.uid() = user_id);
+      ON messages FOR INSERT WITH CHECK (
+        auth.uid() = user_id AND
+        EXISTS (SELECT 1 FROM threads WHERE threads.id = thread_id AND threads.user_id = auth.uid())
+      );
 EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Users can update their own messages" ON messages;
     CREATE POLICY "Users can update their own messages"
-      ON messages FOR UPDATE USING (auth.uid() = user_id);
+      ON messages FOR UPDATE
+      USING (
+        auth.uid() = user_id AND
+        EXISTS (SELECT 1 FROM threads WHERE threads.id = thread_id AND threads.user_id = auth.uid())
+      )
+      WITH CHECK (
+        auth.uid() = user_id AND
+        EXISTS (SELECT 1 FROM threads WHERE threads.id = thread_id AND threads.user_id = auth.uid())
+      );
 EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 DO $$ BEGIN

@@ -2,7 +2,8 @@
 """Enable file_search tool on OpenAI Assistant."""
 
 import sys
-sys.path.insert(0, '/home/suhkth/Desktop/Rag/agentic_rag_app/backend')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from openai import OpenAI
 from app.config import settings
@@ -10,7 +11,7 @@ from app.config import settings
 client = OpenAI(api_key=settings.openai_api_key)
 
 assistant_id = settings.openai_assistant_id
-vector_store_id = "vs_698df86be3d081918dc449d66fb7f552"
+vector_store_id = settings.openai_vector_store_id
 
 print(f"Enabling file_search tool on assistant...")
 print(f"Assistant ID: {assistant_id}")
