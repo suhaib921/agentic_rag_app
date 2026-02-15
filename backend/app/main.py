@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api import chat
+from app.api import chat, documents
 
 app = FastAPI(title="Agentic RAG API")
 
@@ -14,6 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(chat.router)
+app.include_router(documents.router)
 
 @app.get("/health")
 async def health_check():

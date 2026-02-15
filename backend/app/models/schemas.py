@@ -8,7 +8,6 @@ class ThreadCreate(BaseModel):
 class ThreadResponse(BaseModel):
     id: str
     user_id: str
-    openai_thread_id: str
     title: Optional[str]
     created_at: datetime
     updated_at: datetime
@@ -19,5 +18,4 @@ class MessageResponse(BaseModel):
     user_id: str
     role: str
     content: str
-    openai_message_id: Optional[str]
     created_at: datetime

@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from app.auth.middleware import verify_token
 from app.models.schemas import ThreadCreate, ThreadResponse, MessageResponse
-from app.services.openai_service import create_thread, send_message_stream
-from app.services.langsmith_service import traced_stream
+from app.services.llm import get_llm_provider
+from app.services.rag_service import retrieve_context, format_context
 from supabase import create_client, Client, ClientOptions
 from app.config import settings
 import json
@@ -27,11 +27,9 @@ async def create_chat_thread(
     """Create new chat thread."""
     try:
         supabase = get_supabase_client(user_info["token"])
-        openai_thread_id = await create_thread()
 
         result = supabase.table("threads").insert({
             "user_id": user_info["user_id"],
-            "openai_thread_id": openai_thread_id,
             "title": thread_data.title or "New Chat"
         }).execute()
 
@@ -91,7 +89,7 @@ async def send_message(
     content: str,
     user_info: dict = Depends(verify_token)
 ):
-    """Send message, stream response."""
+    """Send message with RAG, stream response."""
     try:
         supabase = get_supabase_client(user_info["token"])
 
@@ -106,8 +104,6 @@ async def send_message(
         if not thread.data:
             raise HTTPException(status_code=404, detail="Thread not found")
 
-        openai_thread_id = thread.data["openai_thread_id"]
-
         # Store user message
         supabase.table("messages").insert({
             "thread_id": thread_id,
@@ -116,36 +112,64 @@ async def send_message(
             "content": content
         }).execute()
 
+        # Get message history
+        messages_result = supabase.table("messages")\
+            .select("*")\
+            .eq("thread_id", thread_id)\
+            .order("created_at")\
+            .execute()
+
         async def stream_generator() -> AsyncIterator[bytes]:
             assistant_content = ""
 
-            # Stream from OpenAI with LangSmith tracing
-            stream_gen = send_message_stream(openai_thread_id, content)
+            try:
+                # RAG: Retrieve context
+                chunks = await retrieve_context(content, user_info["user_id"])
+                context = format_context(chunks)
 
-            async for chunk in traced_stream(
-                openai_thread_id,
-                content,
-                user_info["user_id"],
-                stream_gen
-            ):
-                assistant_content += chunk
-                yield f"data: {json.dumps({'content': chunk})}\n\n".encode()
+                # Build messages with context
+                system_prompt = """You are a helpful assistant. When answering questions, use the provided context from documents when relevant. Always cite your sources."""
 
-            # Store assistant message
-            supabase.table("messages").insert({
-                "thread_id": thread_id,
-                "user_id": user_info["user_id"],
-                "role": "assistant",
-                "content": assistant_content
-            }).execute()
+                if context:
+                    system_prompt += f"\n\n{context}"
 
-            # Update thread timestamp
-            supabase.table("threads")\
-                .update({"updated_at": "now()"})\
-                .eq("id", thread_id)\
-                .execute()
+                # Build message history
+                llm_messages = [{"role": "system", "content": system_prompt}]
 
-            yield f"data: {json.dumps({'done': True})}\n\n".encode()
+                for msg in messages_result.data:
+                    llm_messages.append({
+                        "role": msg["role"],
+                        "content": msg["content"]
+                    })
+
+                # Get LLM provider and stream response
+                provider = get_llm_provider()
+
+                async for event in provider.stream_chat(llm_messages, settings.chat_model):
+                    if event["type"] == "text_delta":
+                        assistant_content += event["content"]
+                        yield f"data: {json.dumps({'content': event['content']})}\n\n".encode()
+                    elif event["type"] == "done":
+                        # Store assistant message
+                        if assistant_content:
+                            supabase.table("messages").insert({
+                                "thread_id": thread_id,
+                                "user_id": user_info["user_id"],
+                                "role": "assistant",
+                                "content": assistant_content
+                            }).execute()
+
+                            # Update thread timestamp
+                            supabase.table("threads")\
+                                .update({"updated_at": "now()"})\
+                                .eq("id", thread_id)\
+                                .execute()
+
+                        yield f"data: {json.dumps({'done': True})}\n\n".encode()
+
+            except Exception as e:
+                error_msg = f"Error: {str(e)}"
+                yield f"data: {json.dumps({'error': error_msg})}\n\n".encode()
 
         return StreamingResponse(
             stream_generator(),
